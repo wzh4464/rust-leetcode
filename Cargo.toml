@@ -1,10 +1,16 @@
 [package]
 name = "rust-test"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
 
 [dependencies]
+rustc-hash = "1.1"
 
 [[bin]]
 name = "rust-test"
 path = "main.rs"
+
+[profile.bench]
+opt-level = 3
+debug = false
+lto = true

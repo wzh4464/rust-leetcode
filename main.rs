@@ -1,109 +1,259 @@
-use std::error;
+#![feature(test)]
 
+#[cfg(test)]
+extern crate test;
+use std::{i32};
+
+use rustc_hash::FxHashMap;
 /**
  * File: ./rust-test/main.rs
  * Created Date: Tuesday, June 24th 2025
  * Author: Zihan
  * -----
- * Last Modified: Sunday, 29th June 2025 10:39:08 pm
+ * Last Modified: Monday, 30th June 2025 12:30:28 pm
  * Modified By: the developer formerly known as Zihan at <wzh4464@gmail.com>
  * -----
  * HISTORY:
  * Date      		By   	Comments
  * ----------		------	---------------------------------------------------------
 **/
+use std::collections::HashMap;
 
 struct Solution;
 
 impl Solution {
-    pub fn num_subseq(nums: Vec<i32>, target: i32) -> i32 {
-        const MOD: u64 = 1_000_000_007;
-        let mut sorted = nums;
-        let mut count: u64 = 0;
-        // 预先为 acc 分配 nums.len() 的容量，避免后续重复分配
-        let mut acc = Vec::with_capacity(sorted.len());
-        acc.push(1u64);
-        sorted.sort_unstable();
-        let mut idx = sorted.len();
-        for (i, &num) in sorted.iter().enumerate() {
-            idx = sorted[i..idx].partition_point(|&x| x + num <= target) + i;
-            if i == idx {
-                break;
+    pub fn find_lhs(nums: Vec<i32>) -> i32 {
+        // let mut hash: HashMap<usize> = nums.iter().enumerate().map(|(i, &x)| (i, x)).collect();
+        // let acc_num = Vec::<usize>::with_capacity(WHOLE_LEN);
+        // let mut acc_num = vec![0usize; WHOLE_LEN];
+        let mut acc_num: HashMap<i32, usize> = HashMap::new();
+        let mut occ: HashMap<i32, bool> = HashMap::new();
+        let mut max = 0;
+        for &val in nums.iter() {
+            // acc_num[val as usize + HALF_LEN + 2] += 1;
+            *acc_num.entry(val + 2).or_insert(0) += 1;
+            *acc_num.entry(val + 1).or_insert(0) += 1;
+            occ.insert(val, true);
+
+            // 检查 (val, val+1)
+            if occ.get(&val) == Some(&true) && occ.get(&(val + 1)) == Some(&true) {
+                if let Some(&cnt) = acc_num.get(&(val + 2)) {
+                    max = max.max(cnt);
+                }
             }
-            let delta = Self::pow_mod(idx as u32 - i as u32 - 1, &mut acc);
-            count = (count + delta) % MOD;
+            // 检查 (val-1, val)
+            if occ.get(&val) == Some(&true) && occ.get(&(val - 1)) == Some(&true) {
+                if let Some(&cnt) = acc_num.get(&(val + 1)) {
+                    max = max.max(cnt);
+                }
+            }
         }
-        count as i32
+
+        max as i32
     }
 
-    fn pow_mod(x: u32, v: &mut Vec<u64>) -> u64 {
-        const MOD: u64 = 1_000_000_007;
-        let idx = x as usize;
-        if let Some(&result) = v.get(idx) {
-            return result;
+    /// Optimized HashMap version with FxHashMap and single-table logic
+    pub fn find_lhs_optimized(nums: Vec<i32>) -> i32 {
+        if nums.len() < 2 {
+            return 0;
         }
-        let old_len = v.len();
-        v.reserve(idx + 1 - old_len);
-        for i in old_len..=idx {
-            let prev = v[i - 1];
-            let curr = prev * 2 % MOD;
-            v.push(curr);
+
+        let mut freq: FxHashMap<i32, usize> =
+            FxHashMap::with_capacity_and_hasher(nums.len(), Default::default());
+
+        for &val in &nums {
+            *freq.entry(val).or_insert(0) += 1;
         }
-        v[idx]
+
+        let mut max = 0;
+        for (&key, &count) in &freq {
+            if let Some(&next_count) = freq.get(&(key + 1)) {
+                max = max.max(count + next_count);
+            }
+        }
+
+        max as i32
+    }
+
+    /// Sorting + two‑pointer version: in‑place, cache‑friendly.
+    pub fn find_lhs_sort(mut nums: Vec<i32>) -> i32 {
+        if nums.len() < 2 {
+            return 0;
+        }
+        nums.sort_unstable();
+        let mut start = 0usize;
+        let mut max = 0usize;
+        for end in 0..nums.len() {
+            while nums[end] - nums[start] > 1 {
+                start += 1;
+            }
+            if nums[end] - nums[start] == 1 {
+                max = max.max(end - start + 1);
+            }
+        }
+        max as i32
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use test::Bencher;
 
     #[test]
-    fn test_pow_mod() {
-        let mut v = vec![1];
-        let x = 2;
-        let result = Solution::pow_mod( x, &mut v);
-        dbg!(&v);
-        assert_eq!(result, 4);
+    fn test_find_lhs_example_1() {
+        let nums = vec![1, 3, 2, 2, 5, 2, 3, 7];
+        let result = Solution::find_lhs(nums);
+        assert_eq!(result, 5);
     }
 
     #[test]
-    fn test_num_subseq_example_1() {
-        let nums = vec![3, 5, 6, 7];
-        let target = 9;
-        let result = Solution::num_subseq(nums, target);
-        assert_eq!(result, 4);
+    fn test_find_lhs_example_2() {
+        let nums = vec![1, 2, 3, 4];
+        let result = Solution::find_lhs(nums);
+        assert_eq!(result, 2);
     }
 
     #[test]
-    fn test_num_subseq_example_2() {
-        let nums = vec![3, 3, 6, 8];
-        let target = 10;
-        let result = Solution::num_subseq(nums, target);
-        assert_eq!(result, 6);
+    fn test_find_lhs_example_3() {
+        let nums = vec![1, 1, 1, 1];
+        let result = Solution::find_lhs(nums);
+        assert_eq!(result, 0);
     }
 
     #[test]
-    fn test_num_subseq_example_3() {
-        let nums = vec![2, 3, 3, 4, 6, 7];
-        let target = 12;
-        let result = Solution::num_subseq(nums, target);
-        assert_eq!(result, 61);
+    fn test_find_lhs_empty() {
+        let nums = vec![];
+        let result = Solution::find_lhs(nums);
+        assert_eq!(result, 0);
     }
 
     #[test]
-    fn test_num_subseq_example_4() {
-        let nums = vec![14,4,6,6,20,8,5,6,8,12,6,10,14,9,17,16,9,7,14,11,14,15,13,11,10,18,13,17,17,14,17,7,9,5,10,13,8,5,18,20,7,5,5,15,19,14];
-        let target = 22;
-        let result = Solution::num_subseq(nums, target);
-        assert_eq!(result, 272187084);
+    fn test_find_lhs_single_element() {
+        let nums = vec![1];
+        let result = Solution::find_lhs(nums);
+        assert_eq!(result, 0);
     }
 
-    #[test]
-    fn test_num_subseq_example_5() {
-        let nums = vec![9,25,9,28,24,12,17,8,28,7,21,25,10,2,16,19,12,13,15,28,14,12,24,9,6,7,2,15,19,13,30,30,23,19,11,3,17,2,14,20,22,30,12,1,11,2,2,20,20,27,15,9,10,4,12,30,13,5,2,11,29,5,3,13,22,5,16,19,7,19,11,16,11,25,29,21,29,3,2,9,20,15,9];
-        let target = 32;
-        let result = Solution::num_subseq(nums, target);
-        assert_eq!(result, 91931447);
+    #[bench]
+    fn bench_hash_20k(b: &mut Bencher) {
+        let base: Vec<i32> = (0..20_000).map(|i| (i as i32 % 1_000) - 500).collect();
+        b.iter(|| {
+            let nums = test::black_box(base.clone());
+            Solution::find_lhs(nums)
+        });
+    }
+
+    #[bench]
+    fn bench_sort_20k(b: &mut Bencher) {
+        let base: Vec<i32> = (0..20_000).map(|i| (i as i32 % 1_000) - 500).collect();
+        b.iter(|| {
+            let nums = test::black_box(base.clone());
+            Solution::find_lhs_sort(nums)
+        });
+    }
+
+    #[bench]
+    fn bench_hash_large_sparse_100k(b: &mut Bencher) {
+        let base: Vec<i32> = (0..100_000).step_by(100).map(|i| i as i32).collect();
+        b.iter(|| {
+            let nums = test::black_box(base.clone());
+            Solution::find_lhs(nums)
+        });
+    }
+
+    #[bench]
+    fn bench_sort_large_sparse_100k(b: &mut Bencher) {
+        let base: Vec<i32> = (0..100_000).step_by(100).map(|i| i as i32).collect();
+        b.iter(|| {
+            let nums = test::black_box(base.clone());
+            Solution::find_lhs_sort(nums)
+        });
+    }
+
+    #[bench]
+    fn bench_hash_large_sparse_1m(b: &mut Bencher) {
+        let base: Vec<i32> = (0..1_000_000).step_by(1000).map(|i| i as i32).collect();
+        b.iter(|| {
+            let nums = test::black_box(base.clone());
+            Solution::find_lhs(nums)
+        });
+    }
+
+    #[bench]
+    fn bench_sort_large_sparse_1m(b: &mut Bencher) {
+        let base: Vec<i32> = (0..1_000_000).step_by(1000).map(|i| i as i32).collect();
+        b.iter(|| {
+            let nums = test::black_box(base.clone());
+            Solution::find_lhs_sort(nums)
+        });
+    }
+
+    #[bench]
+    fn bench_hash_very_sparse_10m(b: &mut Bencher) {
+        let base: Vec<i32> = (0..10_000_000).step_by(50000).map(|i| i as i32).collect();
+        b.iter(|| {
+            let nums = test::black_box(base.clone());
+            Solution::find_lhs(nums)
+        });
+    }
+
+    #[bench]
+    fn bench_sort_very_sparse_10m(b: &mut Bencher) {
+        let base: Vec<i32> = (0..10_000_000).step_by(50000).map(|i| i as i32).collect();
+        b.iter(|| {
+            let nums = test::black_box(base.clone());
+            Solution::find_lhs_sort(nums)
+        });
+    }
+
+    #[bench]
+    fn bench_optimized_20k(b: &mut Bencher) {
+        let base: Vec<i32> = (0..20_000).map(|i| (i as i32 % 1_000) - 500).collect();
+        b.iter(|| {
+            let nums = test::black_box(base.clone());
+            Solution::find_lhs_optimized(nums)
+        });
+    }
+
+    #[bench]
+    fn bench_optimized_200k(b: &mut Bencher) {
+        let base: Vec<i32> = (0..200_000).map(|i| (i as i32 % 10_000) - 5000).collect();
+        b.iter(|| {
+            let nums = test::black_box(base.clone());
+            Solution::find_lhs_optimized(nums)
+        });
+    }
+
+    #[bench]
+    fn bench_sort_200k(b: &mut Bencher) {
+        let base: Vec<i32> = (0..200_000).map(|i| (i as i32 % 10_000) - 5000).collect();
+        b.iter(|| {
+            let nums = test::black_box(base.clone());
+            Solution::find_lhs_sort(nums)
+        });
+    }
+
+    #[bench]
+    fn bench_optimized_1m(b: &mut Bencher) {
+        let base: Vec<i32> = (0..1_000_000)
+            .map(|i| (i as i32 % 50_000) - 25000)
+            .collect();
+        b.iter(|| {
+            let nums = test::black_box(base.clone());
+            Solution::find_lhs_optimized(nums)
+        });
+    }
+
+    #[bench]
+    fn bench_sort_1m(b: &mut Bencher) {
+        let base: Vec<i32> = (0..1_000_000)
+            .map(|i| (i as i32 % 50_000) - 25000)
+            .collect();
+        b.iter(|| {
+            let nums = test::black_box(base.clone());
+            Solution::find_lhs_sort(nums)
+        });
     }
 }
 
