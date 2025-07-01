@@ -1,14 +1,18 @@
 [package]
-name = "rust-test"
+name = "rust-leetcode"
 version = "0.1.0"
 edition = "2021"
 
-[dependencies]
-rustc-hash = "1.1"
+[lib]
+name = "rust_leetcode"
+path = "src/lib.rs"
 
 [[bin]]
-name = "rust-test"
+name = "rust-leetcode"
 path = "main.rs"
+
+[dependencies]
+rustc-hash = "1.1"
 
 [profile.bench]
 opt-level = 3
