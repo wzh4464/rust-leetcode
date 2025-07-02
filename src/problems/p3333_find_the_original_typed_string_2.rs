@@ -1,38 +1,6 @@
 pub struct Solution;
 
-const MOD: i64 = 1_000_000_007;
-
-fn modinv(a: i64, m: i64) -> i64 {
-    let mut a = a;
-    let mut m = m;
-    let (mut x0, mut x1) = (0, 1);
-    while a > 1 {
-        let q = a / m;
-        (a, m) = (m, a % m);
-        (x0, x1) = (x1 - q * x0, x0);
-    }
-    if x1 < 0 {
-        x1 += MOD;
-    }
-    x1
-}
-
-fn modfact(n: usize) -> Vec<i64> {
-    let mut fact = vec![1; n + 1];
-    for i in 1..=n {
-        fact[i] = fact[i - 1] * i as i64 % MOD;
-    }
-    fact
-}
-
-fn modcomb(n: usize, k: usize, fact: &Vec<i64>) -> i64 {
-    if k > n {
-        return 0;
-    }
-    let numerator = fact[n];
-    let denominator = fact[k] * fact[n - k] % MOD;
-    numerator * modinv(denominator, MOD) % MOD
-}
+const MOD: i32 = 1_000_000_007;
 
 impl Solution {
     /// [Problem Number]. [Problem Title]
@@ -60,32 +28,43 @@ impl Solution {
             },
         );
 
-        // dbg!(&acc_vec);
-
         let await_to_distribute = word.len() as i32 - k;
 
         let m = acc_vec.len();
 
-        let await_vec: Vec<i32> = (0..=await_to_distribute).collect();
+        let mut dp: Vec<Vec<Option<i32>>> = vec![vec![None; await_to_distribute as usize + 1]; m];
 
-        let result = await_vec.iter().fold(0, |result: i32, &left| {
-            let tmp = Solution::drawer(left, &acc_vec);
-            dbg!(tmp, left);
-            result + tmp
-        });
-
-        result
+        (0..=await_to_distribute).fold(0, |acc, j| {
+            (acc + Solution::drawer(m - 1, j as usize, &mut dp, &acc_vec)) % MOD
+        })
 
         // todo!("Implement the solution")
     }
 
-    fn drawer(left: i32, acc_vec: &Vec<i32>) -> i32 {
-        if left == 0 {
-            1 as i32
-        } else {
-            
+    fn drawer(m: usize, k: usize, dp: &mut Vec<Vec<Option<i32>>>, acc_vec: &Vec<i32>) -> i32 {
+        let compute = |dp: &mut Vec<Vec<Option<i32>>>| {
+            let prev_max_delete = acc_vec[0..m].iter().fold(0, |acc, &x| acc + x);
+            let iter = k.min(prev_max_delete as usize);
+            let acc = (0..=iter).fold(0, |exact_kind, i| {
+                let j = k - i; // now delete
+                if j <= acc_vec[m] as usize {
+                    (exact_kind + Solution::drawer(m - 1, i, dp, acc_vec)) % MOD
+                } else {
+                    exact_kind
+                }
+            });
+            dp[m][k] = Some(acc);
+            acc
+        };
+
+        match dp[m][k] {
+            Some(i) => i,
+            None if m * k == 0 => {
+                dp[m][k] = Some(1);
+                1
+            }
+            _ => compute(dp),
         }
-        // todo!()
     }
 }
 
@@ -104,10 +83,9 @@ mod tests {
     #[test]
     fn test_example_2() {
         // Test case 2
-        let word = "nnnnuuuudppvvvrrrrrrrryyyfffffffooooooooooooooosssssssmmjjmmmrrrbbbbbbbbeqttmmmmmmmkkkkuuuuunnbbbbaaaaaaaaauuuuuuuuuaaaaawffffzzzzzffffffgggggyyyyyyyyyyyyyyyssbbbbbbbbbbfzzzffbbbiiiimmqqqquuuuuuuuuuzhhhhhhhhpppppppuuuuuuunnnnnnnyyyyyggggggrrrrrrzzzzzttttttttkkkkkkkvvvvvvvqqqqqqqwwwwooooooogggggggnnnnnnnlllkkkkkkkkkkiiiiinsssszzzzzzzzzzjfffddddeeeeiiiivvvvvvvvvffrrrrrrrzzrrrrrrrrrrxxxxxxbbbbbbbttddxxxxxiiiiiqqqqqqqqqyyyyyyyyyvvzlllllllllmmmmmzzzzzzztzzzzppqqqqqxxxxxxxxxxxddddddddddxxxxxxxxxsssssssstttlllkkkkkkaaaaaddddddlllllllllloooooorrrrrrrrrpppoooooooottttttttttuuuuuurqqmmmmmmmvjttttttttfffffffffffffffftttttttttnnnzzzvvttttaaaaaaaaammmmmmmmcccccccwzzzzzzzbrrrrrrrssssssssddddddbbiiiiiiiiqqqqqqehhhhhhccmmmmmmmmmaaaaaaaayyyyyyyyygggjjqqqqqqqssssqqqmmmmmmmmvvvvvvvvffggggggpppppppyyymmmmmmmmmkkkbbbbbbbbbbhhhhkkkkkkknnnnnnnnnnooooooddllllllllllvvvvvvvvqaarrrrrrnnnnnnnnhhmmmmmdddddddddkkknnnnnnnnnuuuuuuuuuuuuuuuuuuuuurrrrqqtttllllllliiiiizzzzuuuuuuuzzqqqqqqqqqkkkkkkkkkkiccciiiiiiiiiirrrrrreeeeeaaahhhhhhbbjjjjjkkkkkkkkkksssssttttttttttaaaahhuuppppppnnuuuuuuuufffffffffffkkksssssrrrddddddddddkkkkkkkkkfeeekkkkkkaaaaaaaaapppppppppsssssssssssssssszzzzzgggggggggzeeeeeeoooooooocccctuuuuaaaaaaannnnnnnnfuuqqqqqpppssssssssssffffffffzzzzzggggggggddddddddnddddddddddfffffffssssssseewwwbbbbbbbuuuuuccgguuuuuukkkkkkkkkkvvvvvvuuuuuuueeeeeeeeqqqqqqlllllllnnnnnhhhhhhhhffffqqqqqqqqqcccccccvvvvvvvvvvgggzzzzzzzkkkkkkkkkrriiiiiiieeeeemmmmmmmmmoohhdddddduuxxxxxxxqqqmmmmmmmmvvvvvvvhhhhhhhhhwwwwakkkkxxxxxxxxxkiiissppeeeqqqqbbbbbbbbfffffffddiiiiiiiyyyyhhhhhhhhhhmmmmmmmpppwwwwwwwwwceeeeeeeeenddwwwwwyccccceeeekkkkvvvvvffffffffttttddhhhhhhhhzzznrrrrrrrrrhhhhhhhhhhhccccccvvvvvvviiifffffffffgghhhhheehhhhhhhhhhmmmmmmkkkkkkkvvnnjjjjjjsssssssssvvvvvvvvuuuuccccccrrrrrrrrrrqqqqqqurrrrrrssssswwwwwhhbbbbbffffffffffaaaaaaaallcccccgqqqqqqqqqqrrrrrrrrrrvvvvviiiiiiiiiiqqqqqqqeeeeeeeeeeiiiiiiiiiidddeeeeeeeeeeoooooooooobbbbbbbbbbyyyyyyyyyaaaaaaaaahhjjjjjjjkkkkkkkkiiiiiiiiiidddffffffffdnnnnnnaaaazzzzzzrrrooooosssssjhhhhhhcwwwwwwwwwweeeeaaaaaaaaffffffrrrrrrmmmmrqqqqqqbbbjjjjjjjmmiiiisssssssaaaaaaavvvvvvvvnnnnnnnnnucccccccccccccccccccccccccccccccuuvvvvvvvwwwmmmmmmmmeeeeeeeeiiiiiiiueeeeeeeeeetttrrrrrrrrrppeeesiijggggggvvddxxxxxxxxxuuuuuuuuuaaaaaaaaaattttttttttmmeeeeeennnnooooopppppppaaaaaaaaaaiiiiiiiirrrrrrrrnnnnnnxxxxxxxxqqqqqqqqqjjjjjjppbbbbbbpppppppppllllllllzzzzzddddddddsssssssssooooooossssssssssrrrrkkkkkkkkkzzzzzzzzuuuuwwwwwwwxxxxxnnnnnnnnnnxrrrrrrrrruuuuupssssssqqqqppppppuuuuuuuuugggggyyyyynnnnnnnnnhhxxxxxxmmmmmmmmmmtttttttttccaaaaaqqqqqqqqqqaaaajhhhhhhhhhfffffzzzzzzzssssswwwwwwwxxxxxxxxxxgggggggfffffffffjjjjjbbbboooooooookkkkeeeeexxhiiiiiinnnnnnnnnnkkkkknnnnnnnnhhhhhhhhhhhhwwwwwwqqqqqqtttttttttzzzzwwwwwwwwwwffjjjjjjjjjsssssssssggggggggggeeeekkrrrrrrapppppaaaaaaaffffuuuuggggggggtttttttiiiiiiaaaaahhhhhhhhhsssssssssovwwwwwssssssssssjjjjjjjnhhhhhrrrrrrrrrrddmmcddddddddddttttttttttttttttttnnnnnnnnnzaaaaaagggggggghhhhhhhhmbbbbbaaaaaaalllwwwwwwwwmmmmmmeeeeeqmmmmmmmmmmrrrrhhhhoooooowwwwwwwwwmmmmmmmmmmvvvrrrrrrhhhhhhhhhuuuuuukkkkxxxxxwwwaaaaaaaaacccccddddppppppuuuuuuuupppppppfffffzzppzzzzzzzzzzrrrruuvvbbbbbbbbmmmmmmmmmmnnnnnnnnuuuuuuuusssmmmmmmmmmmiiiiiiieeeeeeeeccccvvvvvvvvvvkkkkkkkkggggbbnnnnddooooommqqqzzzzzzzpppgggggggooooooooooiiiiiiiiicccccccuuuuuuuuuugggggeeeeeeeuuuxxxxxxiiiiiiiddddffwwwwwwddddddbbbbbbbbbbbbbbbbbwwwwwjjjjjjjjyyyysssuuuuuuurrrrrrraaaaaaaannnnnnnnnttttwwwwxxxxbbbuuugnnnnnnnnnnrrrrrrbbbbbbbbbbbbkkkkkkkkkbbbbbbbbbbbjjjjjjjjjcccccccwwwwwwmmmooooozzzzzzzzgggggffffaddllllllllllyyyaaaaarrrrrrrrrrrrrrnnnnnnnnnnhhhhuuzzzzuuusssssssssxxxxxxxxxxlllllllllqqccccccccceeeeyyyyyyyyyyccccaaaaaaaaaazzzzzzzfbbbbbbboooooobbbbbbbnnnnnnnnxxxxzzuuuuuuuiijjjwwwwwwwwwxxqqqqqccccjuuuuuuummmmmmmmuuttttteeeeeiiiiinnnnnnnnnwwwwwwwkkkkkkkkkuuuuuuttttttllllllllllzziwwwmmmmmmmkkiiiiiiidddddddqqqqqqlllllllllddddddddrrrrrrreeeeeegggggggggfffffffrrrrrwwnnnnnnnnqqqqqqiiiimmmmmmmmmmmffffffffffiiiiiiiiiimmmmmmmtoooooooooottttttttdddddixxcccccccccoojjjjjjjjjffffffffffffffgggggggzzzzzoogggggiiiiiffffffffkvvvvvwwwuwwwwwwwzzzzzzzrrrrrrxxxxxxxxxxfhhhhhhhhhhqqqqqqqqqgggmmmmmmmmmppppppppppxxxxxvvvvvvvvvvlllllqqqqqqtttppppphhhhhhjjjjjjjjjjdddddrrrrrrggrrrrrraaaaaaaaammmmaaaaaaddwwqqwwwuubbbbbbbbevvvvrrrrrrrrrrddzzzzzzlllllllaaaaaaaabbbyyyyyyyyyylllllllllbbbbbboooooooodddddwwwwwwkkkkkkkkkkddddddhhhhhhhhhhccccccccsssaaeeqqqqqqqpppppcyyyyyyxxrhhqqqqqeeeeeppppphhhhdddddddffffmmmmgggggeeqqqmmmmmmmmmmvvnnnnnnnnuuuuuuuaaaaawwwwiiiiiiiiiiyyyyyyyyxxxxxxxxxxxxxvvvvvvddddddbbewpppppnnnnnniiiiirrrrrggggggghhhhhhhhhhaaaaxxxxxffffffjjjjwwwwwwwwyyyyyyymmmmrrrrryyyyjjjjvvvvvvvccyyccccciiiiiiirrrrrfffffffffffffiiiiiiiwwwwwwwwrrrrrgggrrrrrrrrvvvvuuuuuummmpppppppppjjjjjdddddddxxxxxxxxxxiiqqqqqqqkkkkkdddyyyyyyyyppppppppeeeettttnnnnnnnnnyyyyyyyyykkktttkkkkkkkkwwwwwrrrrnnnnnnnnnjjjjjddddddqqqqxxxxhhhhhhhhhwwwwwwzzzzzzzzzjjjjjjjjjjuuuhhhhhbyyyyyyyyvvvvvvvvvvvdddhhhhhhhhllllllppppppppxxfffffffjjjjkkkkkkkssooooooooouuuuuuiiiiigggggguppppcccccccccmmmmmmeeeeeeeejjjuuuuulllllllbbbbbbirrrrrrrriiiiiiiiiiuuuuuuuuuu";
-        let k = 915;
-        assert_eq!(Solution::possible_string_count(word.to_string(), k), 5);
-        todo!("Add test case")
+        let word = "aaabbb";
+        let k = 3;
+        assert_eq!(Solution::possible_string_count(word.to_string(), k), 8);
     }
 
     #[test]
