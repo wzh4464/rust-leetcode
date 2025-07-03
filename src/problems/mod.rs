@@ -1,3 +1,4 @@
 pub mod p3330_find_original_typed_string;
 pub mod p594_longest_harmonious_subsequence;
 pub mod p3333_find_the_original_typed_string_2;
+pub mod p3304_find_the_k_th_character_in_string_game_one;
